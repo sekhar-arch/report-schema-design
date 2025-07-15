@@ -13,7 +13,7 @@ $$ LANGUAGE plpgsql;
 --
 -- Main table to store different types of reports.
 --
-CREATE TABLE report_types (
+CREATE TABLE animal_biome_production.report_types (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     display_name TEXT,
@@ -31,20 +31,20 @@ CREATE TABLE report_types (
 
 -- Trigger to automatically update the 'updated_at' field on change
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON report_types
+BEFORE UPDATE ON animal_biome_production.report_types
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
-COMMENT ON COLUMN report_types.name IS 'e.g., ''Embark - Dog'', ''AB- Cat'', ''Wild horse study''';
-COMMENT ON COLUMN report_types.display_bacteria_overview IS 'Controls visibility of the bacteria overview in the report summary.';
+COMMENT ON COLUMN animal_biome_production.report_types.name IS 'e.g., ''Embark - Dog'', ''AB- Cat'', ''Wild horse study''';
+COMMENT ON COLUMN animal_biome_production.report_types.display_bacteria_overview IS 'Controls visibility of the bacteria overview in the report summary.';
 
 
 --
 -- Stores bacteria categories, each associated with a single report type.
 --
-CREATE TABLE bacteria_categories (
+CREATE TABLE animal_biome_production.bacteria_categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    report_type_id UUID NOT NULL REFERENCES report_types(id) ON DELETE RESTRICT,
+    report_type_id UUID NOT NULL REFERENCES animal_biome_production.report_types(id) ON DELETE RESTRICT,
     name TEXT NOT NULL,
     description TEXT,
     display_if_null BOOLEAN NOT NULL DEFAULT false,
@@ -59,17 +59,17 @@ CREATE TABLE bacteria_categories (
 
 -- Trigger to automatically update the 'updated_at' field on change
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON bacteria_categories
+BEFORE UPDATE ON animal_biome_production.bacteria_categories
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
-COMMENT ON TABLE bacteria_categories IS 'Each category is linked to one Report Type. Deleting a Report Type is blocked if categories are linked.';
+COMMENT ON TABLE animal_biome_production.bacteria_categories IS 'Each category is linked to one Report Type. Deleting a Report Type is blocked if categories are linked.';
 
 
 --
 -- Stores taxonomic information.
 --
-CREATE TABLE taxons (
+CREATE TABLE animal_biome_production.taxons (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     kingdom TEXT,
     phylum TEXT,
@@ -88,20 +88,20 @@ CREATE TABLE taxons (
 
 -- Trigger to automatically update the 'updated_at' field on change
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON taxons
+BEFORE UPDATE ON animal_biome_production.taxons
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
-COMMENT ON TABLE taxons IS 'Stores hierarchical taxonomic information for bacteria.';
+COMMENT ON TABLE animal_biome_production.taxons IS 'Stores hierarchical taxonomic information for bacteria.';
 
 
 --
 -- Stores custom display names for bacteria, linked to report types and taxons.
 --
-CREATE TABLE bacteria_display_names (
+CREATE TABLE animal_biome_production.bacteria_display_names (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    report_type_id UUID NOT NULL REFERENCES report_types(id) ON DELETE RESTRICT,
-    taxon_id UUID NOT NULL REFERENCES taxons(id) ON DELETE RESTRICT,
+    report_type_id UUID NOT NULL REFERENCES animal_biome_production.report_types(id) ON DELETE RESTRICT,
+    taxon_id UUID NOT NULL REFERENCES animal_biome_production.taxons(id) ON DELETE RESTRICT,
     display_name TEXT NOT NULL,
     min_value TEXT, -- Stored as TEXT as per requirements (can be string or float)
     max_value TEXT, -- Stored as TEXT as per requirements (can be string or float)
@@ -116,19 +116,19 @@ CREATE TABLE bacteria_display_names (
 
 -- Trigger to automatically update the 'updated_at' field on change
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON bacteria_display_names
+BEFORE UPDATE ON animal_biome_production.bacteria_display_names
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
-COMMENT ON TABLE bacteria_display_names IS 'Custom display names for bacteria, specific to report types and taxons.';
+COMMENT ON TABLE animal_biome_production.bacteria_display_names IS 'Custom display names for bacteria, specific to report types and taxons.';
 
 
 --
 -- Join table for many-to-many relationship between bacteria_display_names and bacteria_categories.
 --
-CREATE TABLE bacteria_display_name_categories (
-    bacteria_display_name_id UUID NOT NULL REFERENCES bacteria_display_names(id) ON DELETE CASCADE,
-    bacteria_category_id UUID NOT NULL REFERENCES bacteria_categories(id) ON DELETE CASCADE,
+CREATE TABLE animal_biome_production.bacteria_display_name_categories (
+    bacteria_display_name_id UUID NOT NULL REFERENCES animal_biome_production.bacteria_display_names(id) ON DELETE CASCADE,
+    bacteria_category_id UUID NOT NULL REFERENCES animal_biome_production.bacteria_categories(id) ON DELETE CASCADE,
 
     PRIMARY KEY (bacteria_display_name_id, bacteria_category_id),
 
@@ -138,19 +138,19 @@ CREATE TABLE bacteria_display_name_categories (
 
 -- Trigger to automatically update the 'updated_at' field on change
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON bacteria_display_name_categories
+BEFORE UPDATE ON animal_biome_production.bacteria_display_name_categories
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
-COMMENT ON TABLE bacteria_display_name_categories IS 'Links custom bacteria display names to their associated categories.';
+COMMENT ON TABLE animal_biome_production.bacteria_display_name_categories IS 'Links custom bacteria display names to their associated categories.';
 
 
 --
 -- Stores display names, each associated with a single report type.
 --
-CREATE TABLE display_names (
+CREATE TABLE animal_biome_production.display_names (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    report_type_id UUID NOT NULL REFERENCES report_types(id) ON DELETE RESTRICT,
+    report_type_id UUID NOT NULL REFERENCES animal_biome_production.report_types(id) ON DELETE RESTRICT,
     display_name TEXT NOT NULL,
 
     created_at TIMESTAMTZO NOT NULL DEFAULT NOW(),
@@ -162,25 +162,25 @@ CREATE TABLE display_names (
 
 -- Trigger to automatically update the 'updated_at' field on change
 CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON display_names
+BEFORE UPDATE ON animal_biome_production.display_names
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
-COMMENT ON TABLE display_names IS 'Each display name is linked to one Report Type. Deleting a Report Type is blocked if display names are linked.';
+COMMENT ON TABLE animal_biome_production.display_names IS 'Each display name is linked to one Report Type. Deleting a Report Type is blocked if display names are linked.';
 
 
 --
 -- Add the foreign key constraints from report_types to bacteria_categories
 -- This is done after the bacteria_categories table is created to avoid circular dependencies.
 --
-ALTER TABLE report_types
+ALTER TABLE animal_biome_production.report_types
 ADD CONSTRAINT fk_displayed_bacteria_category
 FOREIGN KEY (displayed_bacteria_category_id)
-REFERENCES bacteria_categories(id)
+REFERENCES animal_biome_production.bacteria_categories(id)
 ON DELETE SET NULL;
 
-ALTER TABLE report_types
+ALTER TABLE animal_biome_production.report_types
 ADD CONSTRAINT fk_unidentified_bacteria_category
 FOREIGN KEY (unidentified_bacteria_category_id)
-REFERENCES bacteria_categories(id)
+REFERENCES animal_biome_production.bacteria_categories(id)
 ON DELETE SET NULL;
