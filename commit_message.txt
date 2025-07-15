@@ -1,0 +1,1 @@
+feat: Add display_name to report_types

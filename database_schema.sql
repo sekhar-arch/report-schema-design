@@ -46,6 +46,9 @@ CREATE TABLE bacteria_categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     report_type_id UUID NOT NULL REFERENCES report_types(id) ON DELETE RESTRICT,
     name TEXT NOT NULL,
+    description TEXT,
+    display_if_null BOOLEAN NOT NULL DEFAULT false,
+    display_in_summary_overview BOOLEAN NOT NULL DEFAULT false,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -61,6 +64,85 @@ FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
 COMMENT ON TABLE bacteria_categories IS 'Each category is linked to one Report Type. Deleting a Report Type is blocked if categories are linked.';
+
+
+--
+-- Stores taxonomic information.
+--
+CREATE TABLE taxons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    kingdom TEXT,
+    phylum TEXT,
+    class TEXT,
+    "order" TEXT,
+    family TEXT,
+    genus TEXT,
+    species TEXT,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensures uniqueness for a given taxonomic classification
+    UNIQUE(kingdom, phylum, class, "order", family, genus, species)
+);
+
+-- Trigger to automatically update the 'updated_at' field on change
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON taxons
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+COMMENT ON TABLE taxons IS 'Stores hierarchical taxonomic information for bacteria.';
+
+
+--
+-- Stores custom display names for bacteria, linked to report types and taxons.
+--
+CREATE TABLE bacteria_display_names (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_type_id UUID NOT NULL REFERENCES report_types(id) ON DELETE RESTRICT,
+    taxon_id UUID NOT NULL REFERENCES taxons(id) ON DELETE RESTRICT,
+    display_name TEXT NOT NULL,
+    min_value TEXT, -- Stored as TEXT as per requirements (can be string or float)
+    max_value TEXT, -- Stored as TEXT as per requirements (can be string or float)
+    description TEXT,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensures a unique display name entry for a given report type and taxon
+    UNIQUE(report_type_id, taxon_id)
+);
+
+-- Trigger to automatically update the 'updated_at' field on change
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON bacteria_display_names
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+COMMENT ON TABLE bacteria_display_names IS 'Custom display names for bacteria, specific to report types and taxons.';
+
+
+--
+-- Join table for many-to-many relationship between bacteria_display_names and bacteria_categories.
+--
+CREATE TABLE bacteria_display_name_categories (
+    bacteria_display_name_id UUID NOT NULL REFERENCES bacteria_display_names(id) ON DELETE CASCADE,
+    bacteria_category_id UUID NOT NULL REFERENCES bacteria_categories(id) ON DELETE CASCADE,
+
+    PRIMARY KEY (bacteria_display_name_id, bacteria_category_id),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Trigger to automatically update the 'updated_at' field on change
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON bacteria_display_name_categories
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+COMMENT ON TABLE bacteria_display_name_categories IS 'Links custom bacteria display names to their associated categories.';
 
 
 --
